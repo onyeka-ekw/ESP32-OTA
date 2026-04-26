@@ -34,3 +34,5 @@ temp/
 
 # Configuration files with sensitive data
 include/config.h
+DEPLOYMENT.md
+ESP32_OTA/AWS_S3_SETUP.md
