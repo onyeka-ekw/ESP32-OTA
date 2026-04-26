@@ -95,7 +95,6 @@ jobs:
       if: github.event_name == 'push'
       run: |
         aws s3 cp version.json s3://${{ secrets.AWS_S3_BUCKET }}/
-        aws s3api put-object-acl --bucket ${{ secrets.AWS_S3_BUCKET }} --key version.json --acl public-read
         echo "Version file uploaded to S3: s3://${{ secrets.AWS_S3_BUCKET }}/version.json"
         
     - name: Generate deployment report
