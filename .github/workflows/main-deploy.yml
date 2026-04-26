@@ -102,11 +102,9 @@ jobs:
         echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
         echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Firmware Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Build Status**: Success" >> $GITHUB_STEP_SUMMARY
         if [ "${{ github.event_name }}" == "push" ]; then
           echo "- **Deployment Status**: Completed" >> $GITHUB_STEP_SUMMARY
-          echo "- **S3 Location**: s3://${{ secrets.AWS_S3_BUCKET }}/firmware/${{ steps.filename.outputs.filename }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Version URL**: https://${{ secrets.AWS_S3_BUCKET }}.s3.amazonaws.com/version.json" >> $GITHUB_STEP_SUMMARY
         else
           echo "- **Deployment Status**: Skipped (Pull Request)" >> $GITHUB_STEP_SUMMARY
