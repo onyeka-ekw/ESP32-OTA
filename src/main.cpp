@@ -5,23 +5,17 @@
 #include <Update.h>
 #include "ota_manager.h"
 
-// Try to include config.h, but provide fallbacks for GitHub Actions
+// Fallback configuration for GitHub Actions (always defined)
+#define WIFI_SSID "GITHUB_ACTIONS_BUILD"
+#define WIFI_PASSWORD "GITHUB_ACTIONS_BUILD"
+#define OTA_SERVER "esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com"
+#define VERSION_CHECK_ENDPOINT "https://esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com/version.json"
+
+// Try to override with local config.h if it exists
 #ifdef __has_include
   #if __has_include("config.h")
     #include "config.h"
-  #else
-    // Fallback configuration for GitHub Actions
-    #define WIFI_SSID "GITHUB_ACTIONS_BUILD"
-    #define WIFI_PASSWORD "GITHUB_ACTIONS_BUILD"
-    #define OTA_SERVER "esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com"
-    #define VERSION_CHECK_ENDPOINT "https://esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com/version.json"
   #endif
-#else
-  // Fallback configuration for older compilers
-  #define WIFI_SSID "GITHUB_ACTIONS_BUILD"
-  #define WIFI_PASSWORD "GITHUB_ACTIONS_BUILD"
-  #define OTA_SERVER "esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com"
-  #define VERSION_CHECK_ENDPOINT "https://esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com/version.json"
 #endif
 
 // Function declarations
