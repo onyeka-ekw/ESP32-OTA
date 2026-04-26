@@ -114,7 +114,7 @@ jobs:
         fi
         
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: firmware-main
         path: |
@@ -124,12 +124,10 @@ jobs:
         
     - name: Create GitHub Release
       if: github.event_name == 'push'
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ steps.version.outputs.version }}
-        release_name: ESP32 OTA Firmware v${{ steps.version.outputs.version }}
+        name: ESP32 OTA Firmware v${{ steps.version.outputs.version }}
         body: |
           ## ESP32 OTA Firmware v${{ steps.version.outputs.version }}
           
@@ -146,6 +144,8 @@ jobs:
           1. Download the firmware file
           2. Flash to ESP32 using esptool or PlatformIO
           3. Device will automatically check for updates on startup
-          
         draft: false
         prerelease: false
+        files: |
+          ${{ steps.filename.outputs.filename }}
+          version.json
