@@ -6,8 +6,8 @@
 #include "ota_manager.h"
 
 // Fallback configuration for GitHub Actions (always defined)
-#define WIFI_SSID "GITHUB_ACTIONS_BUILD"
-#define WIFI_PASSWORD "GITHUB_ACTIONS_BUILD"
+#define WIFI_SSID "HeatSense"
+#define WIFI_PASSWORD "HeatSense"
 #define OTA_SERVER "esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com"
 #define VERSION_CHECK_ENDPOINT "https://esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com/version.json"
 
@@ -21,6 +21,7 @@
 // Function declarations
 void connectToWiFi();
 void checkForUpdates();
+void scanWiFiNetworks();
 
 // LED configuration
 const int LED_PIN = 2; // Built-in LED on ESP32
@@ -48,6 +49,10 @@ void setup() {
     // Initialize LED
     pinMode(LED_PIN, OUTPUT);
     digitalWrite(LED_PIN, LOW);
+    
+    // Scan WiFi networks first
+    Serial.println("Scanning available WiFi networks...");
+    scanWiFiNetworks();
     
     // Connect to WiFi
     connectToWiFi();
@@ -81,14 +86,16 @@ void loop() {
         ledState = !ledState;
         digitalWrite(LED_PIN, ledState ? HIGH : LOW);
         lastLedBlink = currentTime;
-        Serial.println("LED State: " + String(ledState ? "ON" : "OFF"));
+        Serial.println("LED State Upgrade: " + String(ledState ? "ON" : "OFF"));
     }
     
-    delay(100);
+    delay(1);
 }
 
 void connectToWiFi() {
     Serial.println("Connecting to WiFi...");
+    Serial.println("Target SSID: " + String(WIFI_SSID));
+    Serial.println("Password length: " + String(strlen(WIFI_PASSWORD)));
     
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     
@@ -96,6 +103,11 @@ void connectToWiFi() {
     while (WiFi.status() != WL_CONNECTED && millis() - startTime < WIFI_CONNECT_TIMEOUT) {
         delay(500);
         Serial.print(".");
+        
+        // Show WiFi status during connection
+        if (millis() - startTime % 2000 == 0) {
+            Serial.println("\nStatus: " + String(WiFi.status()));
+        }
     }
     
     if (WiFi.status() == WL_CONNECTED) {
@@ -104,6 +116,12 @@ void connectToWiFi() {
         digitalWrite(LED_PIN, HIGH); // Turn on LED to indicate WiFi connected
     } else {
         Serial.println("\nFailed to connect to WiFi");
+        Serial.println("Final status: " + String(WiFi.status()));
+        Serial.println("Possible causes:");
+        Serial.println("- Wrong password");
+        Serial.println("- Network security type not supported");
+        Serial.println("- MAC address filtering");
+        
         // Blink 3 times to indicate connection failure
         for (int i = 0; i < 3; i++) {
             digitalWrite(LED_PIN, HIGH);
@@ -137,4 +155,28 @@ void checkForUpdates() {
     } else {
         Serial.println("No updates available.");
     }
+}
+
+void scanWiFiNetworks() {
+    Serial.println("Starting WiFi scan...");
+    
+    int n = WiFi.scanNetworks();
+    Serial.println("Scan complete!");
+    
+    if (n == 0) {
+        Serial.println("No WiFi networks found");
+    } else {
+        Serial.print(String(n) + " networks found:\n");
+        for (int i = 0; i < n; ++i) {
+            Serial.print(i + 1);
+            Serial.print(": ");
+            Serial.print(WiFi.SSID(i));
+            Serial.print(" (");
+            Serial.print(WiFi.RSSI(i));
+            Serial.print("dBm)");
+            Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " [OPEN]" : " [SECURED]");
+            delay(10);
+        }
+    }
+    Serial.println("");
 }
