@@ -36,4 +36,4 @@ temp/
 DEPLOYMENT.md
 ESP32_OTA/AWS_S3_SETUP.md
 version.json
-secrets.py
+.env.example
