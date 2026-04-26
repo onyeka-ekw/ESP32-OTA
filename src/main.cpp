@@ -13,6 +13,11 @@
 void connectToWiFi();
 void checkForUpdates();
 void scanWiFiNetworks();
+void setupUserCredentials();
+void enterSetupMode();
+bool isUserConfigured();
+void loadUserCredentials(String &ssid, String &password);
+void saveUserCredentials(const String &ssid, const String &password);
 
 // LED configuration
 const int LED_PIN = 2; // Built-in LED on ESP32
@@ -22,14 +27,24 @@ const unsigned long WIFI_CONNECT_TIMEOUT = 10000;
 const unsigned long UPDATE_CHECK_INTERVAL = 3600000; // 1 hour in milliseconds
 const unsigned long LED_BLINK_INTERVAL = 2000;
 
-// EEPROM constants
-#define EEPROM_SIZE 64
+// EEPROM constants for persistent user settings
+#define EEPROM_SIZE 128
 #define VERSION_ADDR 0
+#define VERSION_SIZE 16
+#define USER_SSID_ADDR 16
+#define USER_SSID_SIZE 32
+#define USER_PASSWORD_ADDR 48
+#define USER_PASSWORD_SIZE 64
+#define CONFIG_FLAGS_ADDR 112
+#define CONFIG_FLAGS_SIZE 1
+#define CONFIGURED_FLAG 0xAA
 
 // Global variables
 unsigned long lastUpdateCheck = 0;
 unsigned long lastLedBlink = 0;
 bool ledState = false;
+String userSSID = "";
+String userPassword = "";
 
 // Objects
 OTAManager otaManager;
@@ -80,6 +95,16 @@ void setup() {
     pinMode(LED_PIN, OUTPUT);
     digitalWrite(LED_PIN, LOW);
     
+    // Check if user has configured credentials
+    if (!isUserConfigured()) {
+        Serial.println("First time setup - configuring WiFi credentials...");
+        enterSetupMode();
+    } else {
+        // Load user credentials from EEPROM
+        loadUserCredentials(userSSID, userPassword);
+        Serial.println("Loaded user credentials from EEPROM");
+    }
+    
     // Scan WiFi networks first
     Serial.println("Scanning available WiFi networks...");
     scanWiFiNetworks();
@@ -127,10 +152,10 @@ void loop() {
 
 void connectToWiFi() {
     Serial.println("Connecting to WiFi...");
-    Serial.println("Target SSID: " + String(WIFI_SSID));
-    Serial.println("Password length: " + String(strlen(WIFI_PASSWORD)));
+    Serial.println("Target SSID: " + userSSID);
+    Serial.println("Password length: " + String(userPassword.length()));
     
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    WiFi.begin(userSSID.c_str(), userPassword.c_str());
     
     unsigned long startTime = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - startTime < WIFI_CONNECT_TIMEOUT) {
@@ -224,7 +249,7 @@ void scanWiFiNetworks() {
         Serial.println("No WiFi networks found");
     } else {
         Serial.print(String(n) + " networks found:\n");
-        for (int i = 0; i < n; ++i) {
+        for (int i = 0; i < n; i++) {
             Serial.print(i + 1);
             Serial.print(": ");
             Serial.print(WiFi.SSID(i));
@@ -236,4 +261,115 @@ void scanWiFiNetworks() {
         }
     }
     Serial.println("");
+}
+
+bool isUserConfigured() {
+    byte configFlag = EEPROM.read(CONFIG_FLAGS_ADDR);
+    return configFlag == CONFIGURED_FLAG;
+}
+
+void loadUserCredentials(String &ssid, String &password) {
+    // Load SSID
+    ssid = "";
+    for (int i = 0; i < USER_SSID_SIZE; i++) {
+        char c = EEPROM.read(USER_SSID_ADDR + i);
+        if (c == 0) break;
+        ssid += c;
+    }
+    
+    // Load Password
+    password = "";
+    for (int i = 0; i < USER_PASSWORD_SIZE; i++) {
+        char c = EEPROM.read(USER_PASSWORD_ADDR + i);
+        if (c == 0) break;
+        password += c;
+    }
+}
+
+void saveUserCredentials(const String &ssid, const String &password) {
+    // Save SSID
+    for (int i = 0; i < USER_SSID_SIZE; i++) {
+        if (i < ssid.length()) {
+            EEPROM.write(USER_SSID_ADDR + i, ssid.charAt(i));
+        } else {
+            EEPROM.write(USER_SSID_ADDR + i, 0);
+        }
+    }
+    
+    // Save Password
+    for (int i = 0; i < USER_PASSWORD_SIZE; i++) {
+        if (i < password.length()) {
+            EEPROM.write(USER_PASSWORD_ADDR + i, password.charAt(i));
+        } else {
+            EEPROM.write(USER_PASSWORD_ADDR + i, 0);
+        }
+    }
+    
+    // Mark as configured
+    EEPROM.write(CONFIG_FLAGS_ADDR, CONFIGURED_FLAG);
+    EEPROM.commit();
+    
+    Serial.println("User credentials saved to EEPROM");
+}
+
+void enterSetupMode() {
+    Serial.println("\n=== ESP32 OTA Setup Mode ===");
+    Serial.println("Please configure your WiFi credentials");
+    Serial.println("Format: SSID,PASSWORD (e.g., MyWiFi,MyPassword)");
+    Serial.println("Type 'reset' to clear credentials and restart setup");
+    Serial.println("Type 'skip' to use factory credentials");
+    Serial.println("Waiting for input...\n");
+    
+    String input = "";
+    bool setupComplete = false;
+    
+    while (!setupComplete) {
+        if (Serial.available()) {
+            input = Serial.readStringUntil('\n');
+            input.trim();
+            
+            if (input.equalsIgnoreCase("reset")) {
+                // Clear configuration flag
+                EEPROM.write(CONFIG_FLAGS_ADDR, 0x00);
+                EEPROM.commit();
+                Serial.println("Credentials reset. Restarting...");
+                delay(1000);
+                ESP.restart();
+            }
+            else if (input.equalsIgnoreCase("skip")) {
+                Serial.println("Cannot skip - WiFi credentials are required for OTA updates");
+                Serial.println("Please enter your WiFi credentials in format: SSID,PASSWORD");
+            }
+            else if (input.length() > 0 && input.indexOf(',') > 0) {
+                // Parse SSID and Password
+                int commaIndex = input.indexOf(',');
+                String ssid = input.substring(0, commaIndex);
+                String password = input.substring(commaIndex + 1);
+                
+                ssid.trim();
+                password.trim();
+                
+                if (ssid.length() > 0 && password.length() > 0) {
+                    Serial.println("Setting credentials:");
+                    Serial.println("SSID: " + ssid);
+                    Serial.println("Password: " + String(password.length()) + " characters");
+                    
+                    // Save to EEPROM
+                    saveUserCredentials(ssid, password);
+                    userSSID = ssid;
+                    userPassword = password;
+                    setupComplete = true;
+                    
+                    Serial.println("Setup complete! Credentials saved.");
+                } else {
+                    Serial.println("Invalid format. Please use: SSID,PASSWORD");
+                }
+            }
+            else {
+                Serial.println("Invalid input. Please use format: SSID,PASSWORD");
+                Serial.println("Or type 'reset' to clear, 'skip' to use factory");
+            }
+        }
+        delay(100);
+    }
 }

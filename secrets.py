@@ -1,12 +1,16 @@
 Import('env')
 import os
 
-# Required environment variables for ESP32 OTA (excluding version)
+# Required environment variables for ESP32 OTA (WiFi credentials optional)
 required_vars = [
-    'WIFI_SSID',
-    'WIFI_PASSWORD', 
     'OTA_SERVER',
     'VERSION_CHECK_ENDPOINT'
+]
+
+# Optional environment variables (can be empty)
+optional_vars = [
+    'WIFI_SSID',
+    'WIFI_PASSWORD'
 ]
 
 # First try to load from .env file (for local development)
@@ -34,7 +38,7 @@ else:
 # If no .env file, try to load from system environment (GitHub Actions)
 if not loaded_from_env:
     print("Loading environment variables from GitHub Secrets...")
-    for var in required_vars:
+    for var in required_vars + optional_vars:
         value = os.environ.get(var)
         if value:
             # Add to build environment
@@ -43,7 +47,13 @@ if not loaded_from_env:
             env.Append(CPPDEFINES=[f'{var}=\\"{value}\\"'])
             print(f"Loaded: {var}")
         else:
-            print(f"Warning: {var} not found in environment!")
+            # For optional vars, set empty string if not found
+            if var in optional_vars:
+                env[var] = ""
+                env.Append(CPPDEFINES=[f'{var}=\\"\\"'])
+                print(f"Optional {var} not found, using empty string")
+            else:
+                print(f"Warning: {var} not found in environment!")
 
 # Verify all required variables are loaded
 missing_vars = []
@@ -58,3 +68,4 @@ if missing_vars:
     exit(1)
 else:
     print("All required environment variables loaded successfully!")
+    print("Optional variables (WiFi credentials) will be configured by user at boot")
