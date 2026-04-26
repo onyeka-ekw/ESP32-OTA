@@ -10,20 +10,11 @@ class OTAManager {
 public:
     OTAManager();
     
-    // Check if an update is available
     bool checkForUpdate(const char* versionUrl);
-    
-    // Perform the OTA update
     bool performUpdate(const char* firmwareUrl);
     const char* getFirmwareUrl();
-    
-    // Get current firmware version
     String getCurrentVersion();
-    
-    // Get available firmware version
     String getAvailableVersion();
-    
-    // Set current version (for persistent storage)
     void setCurrentVersion(const String& version);
 
 private:
@@ -33,14 +24,8 @@ private:
     
     // Parse version information from JSON
     bool parseVersionInfo(const String& jsonPayload);
-    
-    // Download firmware file
     bool downloadFirmware(const char* url);
-    
-    // Write firmware to flash
     bool writeFirmware(uint8_t* data, size_t length);
-    
-    // Verify firmware integrity
     bool verifyFirmware();
 };
 

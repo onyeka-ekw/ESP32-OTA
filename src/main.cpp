@@ -12,7 +12,6 @@
 // Function declarations
 void connectToWiFi();
 void checkForUpdates();
-void scanWiFiNetworks();
 void setupUserCredentials();
 void enterSetupMode();
 bool isUserConfigured();
@@ -104,10 +103,6 @@ void setup() {
         loadUserCredentials(userSSID, userPassword);
         Serial.println("Loaded user credentials from EEPROM");
     }
-    
-    // Scan WiFi networks first
-    Serial.println("Scanning available WiFi networks...");
-    scanWiFiNetworks();
     
     // Connect to WiFi
     connectToWiFi();
@@ -237,30 +232,6 @@ void checkForUpdates() {
     } else {
         Serial.println("No updates available.");
     }
-}
-
-void scanWiFiNetworks() {
-    Serial.println("Starting WiFi scan...");
-    
-    int n = WiFi.scanNetworks();
-    Serial.println("Scan complete!");
-    
-    if (n == 0) {
-        Serial.println("No WiFi networks found");
-    } else {
-        Serial.print(String(n) + " networks found:\n");
-        for (int i = 0; i < n; i++) {
-            Serial.print(i + 1);
-            Serial.print(": ");
-            Serial.print(WiFi.SSID(i));
-            Serial.print(" (");
-            Serial.print(WiFi.RSSI(i));
-            Serial.print("dBm)");
-            Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " [OPEN]" : " [SECURED]");
-            delay(10);
-        }
-    }
-    Serial.println("");
 }
 
 bool isUserConfigured() {
