@@ -1,0 +1,7 @@
+{
+  "version": "1.0.0",
+  "firmware_url": "https://your-s3-bucket.s3.amazonaws.com/firmware/esp32_ota_v1.0.0.bin",
+  "release_notes": "Initial release with basic OTA functionality",
+  "required": false,
+  "released_at": "2024-01-01T00:00:00Z"
+}
