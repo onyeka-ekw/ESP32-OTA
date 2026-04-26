@@ -119,30 +119,4 @@ jobs:
           version.json
         retention-days: 30
         
-    - name: Create GitHub Release
-      if: github.event_name == 'push'
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: v${{ steps.version.outputs.version }}
-        name: ESP32 OTA Firmware v${{ steps.version.outputs.version }}
-        body: |
-          ## ESP32 OTA Firmware v${{ steps.version.outputs.version }}
-          
-          ### Changes
-          - Automated release from commit ${{ github.sha }}
-          - Firmware uploaded to S3 bucket
-          - Version information updated
-          
-          ### Download
-          - **Firmware**: [${{ steps.filename.outputs.filename }}](https://${{ secrets.AWS_S3_BUCKET }}.s3.amazonaws.com/firmware/${{ steps.filename.outputs.filename }})
-          - **Version Info**: [version.json](https://${{ secrets.AWS_S3_BUCKET }}.s3.amazonaws.com/version.json)
-          
-          ### Installation
-          1. Download the firmware file
-          2. Flash to ESP32 using esptool or PlatformIO
-          3. Device will automatically check for updates on startup
-        draft: false
-        prerelease: false
-        files: |
-          ${{ steps.filename.outputs.filename }}
-          version.json
+    
