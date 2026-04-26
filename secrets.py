@@ -1,8 +1,18 @@
 Import('env')
 import os
 
-# Load environment variables from .env file
+# Required environment variables for ESP32 OTA
+required_vars = [
+    'WIFI_SSID',
+    'WIFI_PASSWORD', 
+    'OTA_SERVER',
+    'VERSION_CHECK_ENDPOINT',
+    'FIRMWARE_VERSION'
+]
+
+# First try to load from .env file (for local development)
 env_file = os.path.join(env['PROJECT_DIR'], '.env')
+loaded_from_env = False
 
 if os.path.exists(env_file):
     print("Loading environment variables from .env file...")
@@ -18,6 +28,34 @@ if os.path.exists(env_file):
                 # Add to build flags
                 env.Append(CPPDEFINES=[f'{key}=\\"{value}\\"'])
                 print(f"Loaded: {key}")
+                loaded_from_env = True
 else:
-    print("Warning: .env file not found!")
-    print("Please copy .env.example to .env and add your credentials")
+    print("No .env file found, checking for GitHub Secrets...")
+
+# If no .env file, try to load from system environment (GitHub Actions)
+if not loaded_from_env:
+    print("Loading environment variables from GitHub Secrets...")
+    for var in required_vars:
+        value = os.environ.get(var)
+        if value:
+            # Add to build environment
+            env[var] = value
+            # Add to build flags
+            env.Append(CPPDEFINES=[f'{var}=\\"{value}\\"'])
+            print(f"Loaded: {var}")
+        else:
+            print(f"Warning: {var} not found in environment!")
+
+# Verify all required variables are loaded
+missing_vars = []
+for var in required_vars:
+    if var not in env:
+        missing_vars.append(var)
+
+if missing_vars:
+    print(f"ERROR: Missing required variables: {', '.join(missing_vars)}")
+    print("For local development: create .env file with these variables")
+    print("For GitHub Actions: add these as Repository Secrets")
+    exit(1)
+else:
+    print("All required environment variables loaded successfully!")
