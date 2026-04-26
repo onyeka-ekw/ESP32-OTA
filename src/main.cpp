@@ -6,18 +6,8 @@
 #include <EEPROM.h>
 #include "ota_manager.h"
 
-// Fallback configuration for GitHub Actions (always defined)
-#define WIFI_SSID "HeatSense"
-#define WIFI_PASSWORD "HeatSense"
-#define OTA_SERVER "esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com"
-#define VERSION_CHECK_ENDPOINT "https://esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com/version.json"
-
-// Try to override with local config.h if it exists
-#ifdef __has_include
-  #if __has_include("config.h")
-    #include "config.h"
-  #endif
-#endif
+// Configuration - environment variables required (no hardcoded credentials)
+// These must be provided by .env file locally or GitHub Secrets in CI/CD
 
 // Function declarations
 void connectToWiFi();
@@ -129,7 +119,7 @@ void loop() {
         ledState = !ledState;
         digitalWrite(LED_PIN, ledState ? HIGH : LOW);
         lastLedBlink = currentTime;
-        Serial.println("LED State Version 3: " + String(ledState ? "ON" : "OFF"));
+        Serial.println("LED State Version 4: " + String(ledState ? "ON" : "OFF"));
     }
     
     delay(1);

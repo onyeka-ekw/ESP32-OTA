@@ -45,11 +45,17 @@ jobs:
     - name: Build firmware
       run: |
         pio run
+      env:
+        WIFI_SSID: ${{ secrets.WIFI_SSID }}
+        WIFI_PASSWORD: ${{ secrets.WIFI_PASSWORD }}
+        OTA_SERVER: ${{ secrets.OTA_SERVER }}
+        VERSION_CHECK_ENDPOINT: ${{ secrets.VERSION_CHECK_ENDPOINT }}
+        FIRMWARE_VERSION: ${{ secrets.FIRMWARE_VERSION }}
         
     - name: Extract version information
       id: version
       run: |
-        VERSION=$(grep -r 'FIRMWARE_VERSION' platformio.ini | sed 's/.*"\(.*\)".*/\1/')
+        VERSION="${{ secrets.FIRMWARE_VERSION }}"
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Firmware version: $VERSION"
         
