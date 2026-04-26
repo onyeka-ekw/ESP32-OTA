@@ -81,14 +81,18 @@ jobs:
     - name: Update version.json
       if: github.event_name == 'push'
       run: |
-        cat > version.json << EOF
-        {
-          "version": "${{ steps.version.outputs.version }}",
-          "firmware_url": "https://${{ secrets.AWS_S3_BUCKET }}.s3.amazonaws.com/firmware/${{ steps.filename.outputs.filename }}",
-          "release_notes": "Automated release from commit ${{ github.sha }}",
-          "required": false,
-          "released_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        python3 << 'EOF'
+        import json
+        import datetime
+        data = {
+            "version": "${{ steps.version.outputs.version }}",
+            "firmware_url": "https://${{ secrets.AWS_S3_BUCKET }}.s3.amazonaws.com/firmware/${{ steps.filename.outputs.filename }}",
+            "release_notes": "Automated release from commit ${{ github.sha }}",
+            "required": False,
+            "released_at": datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
         }
+        with open('version.json', 'w') as f:
+            json.dump(data, f, indent=2)
         EOF
         
     - name: Upload version.json to S3
