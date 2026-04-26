@@ -155,7 +155,7 @@ bool OTAManager::downloadFirmware(const char* url) {
                     if (totalSize > 0) {
                         int progress = (written * 100) / totalSize;
                         if (progress != lastProgress || written % 5000 == 0) {
-                            Serial.print("\rProgress: " + String(progress) + "% (" + String(written) + "/" + String(totalSize) + " bytes)");
+                            Serial.println("\rProgress: " + String(progress) + "% (" + String(written) + "/" + String(totalSize) + " bytes)");
                             lastProgress = progress;
                         }
                     } else {

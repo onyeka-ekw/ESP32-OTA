@@ -183,8 +183,6 @@ void checkForUpdates() {
         if (otaManager.performUpdate(otaManager.getFirmwareUrl())) {
             // Save new version to EEPROM before restart
             String newVersion = otaManager.getAvailableVersion();
-            
-            Serial.println("OTA update completed successfully!");
             Serial.println("Saving new version to EEPROM: " + newVersion);
             
             // Clear old version and write new version
