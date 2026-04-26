@@ -129,7 +129,7 @@ void loop() {
         ledState = !ledState;
         digitalWrite(LED_PIN, ledState ? HIGH : LOW);
         lastLedBlink = currentTime;
-        Serial.println("LED State Version 2: " + String(ledState ? "ON" : "OFF"));
+        Serial.println("LED State Version 3: " + String(ledState ? "ON" : "OFF"));
     }
     
     delay(1);
