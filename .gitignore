@@ -35,5 +35,6 @@ temp/
 # Configuration files with sensitive data
 DEPLOYMENT.md
 ESP32_OTA/AWS_S3_SETUP.md
+AWS_S3_SETUP.md
 version.json
 .env.example
