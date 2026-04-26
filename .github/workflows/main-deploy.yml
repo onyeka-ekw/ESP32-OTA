@@ -81,13 +81,15 @@ jobs:
     - name: Update version.json
       if: github.event_name == 'push'
       run: |
-        echo '{
+        cat > version.json << EOF
+        {
           "version": "${{ steps.version.outputs.version }}",
           "firmware_url": "https://${{ secrets.AWS_S3_BUCKET }}.s3.amazonaws.com/firmware/${{ steps.filename.outputs.filename }}",
           "release_notes": "Automated release from commit ${{ github.sha }}",
           "required": false,
-          "released_at": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
-        }' > version.json
+          "released_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        }
+        EOF
         
     - name: Upload version.json to S3
       if: github.event_name == 'push'
