@@ -16,7 +16,6 @@ jobs:
       WIFI_PASSWORD: ${{ secrets.WIFI_PASSWORD }}
       OTA_SERVER: ${{ secrets.OTA_SERVER }}
       VERSION_CHECK_ENDPOINT: ${{ secrets.VERSION_CHECK_ENDPOINT }}
-      FIRMWARE_VERSION: ${{ secrets.FIRMWARE_VERSION }}
     
     steps:
     - name: Checkout code
@@ -57,7 +56,7 @@ jobs:
     - name: Extract version information
       id: version
       run: |
-        VERSION="${{ secrets.FIRMWARE_VERSION }}"
+        VERSION=$(grep -r 'FIRMWARE_VERSION' platformio.ini | sed 's/.*"\(.*\)".*/\1/')
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Firmware version: $VERSION"
         

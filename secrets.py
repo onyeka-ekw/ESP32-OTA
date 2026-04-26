@@ -1,13 +1,12 @@
 Import('env')
 import os
 
-# Required environment variables for ESP32 OTA
+# Required environment variables for ESP32 OTA (excluding version)
 required_vars = [
     'WIFI_SSID',
     'WIFI_PASSWORD', 
     'OTA_SERVER',
-    'VERSION_CHECK_ENDPOINT',
-    'FIRMWARE_VERSION'
+    'VERSION_CHECK_ENDPOINT'
 ]
 
 # First try to load from .env file (for local development)
