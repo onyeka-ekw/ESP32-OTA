@@ -39,24 +39,25 @@ bool OTAManager::checkForUpdate(const char* versionUrl) {
     return false;
 }
 
-bool OTAManager::performUpdate(const char* server) {
-    if (firmwareUrl.length() == 0) {
-        Serial.println("No firmware URL available");
-        return false;
+bool OTAManager::performUpdate(const char* firmwareUrl) {
+    String fullUrl = String(firmwareUrl);
+    if (!fullUrl.startsWith("http://") && !fullUrl.startsWith("https://")) {
+        fullUrl = "https://" + fullUrl;
     }
+    Serial.println("Starting OTA update from: " + fullUrl);
     
-    Serial.println("Starting OTA update from: " + firmwareUrl);
-    
-    // Begin update process
-    size_t firmwareSize = 0;
+    // Simple test - just try to begin update with a reasonable size
+    size_t firmwareSize = 1000000; // 1MB should be enough for most firmware
     
     if (!Update.begin(firmwareSize)) {
-        Serial.println("Update begin failed");
+        Serial.println("Update begin failed: " + String(Update.errorString()));
         return false;
     }
     
+    Serial.println("Update begun successfully, starting download...");
+    
     // Download and write firmware
-    if (!downloadFirmware(firmwareUrl.c_str())) {
+    if (!downloadFirmware(fullUrl.c_str())) {
         Serial.println("Firmware download failed");
         Update.abort();
         return false;
@@ -68,7 +69,7 @@ bool OTAManager::performUpdate(const char* server) {
         return false;
     }
     
-    Serial.println("OTA update completed successfully");
+    Serial.println("OTA update completed successfully!");
     return true;
 }
 
@@ -78,6 +79,14 @@ String OTAManager::getCurrentVersion() {
 
 String OTAManager::getAvailableVersion() {
     return availableVersion;
+}
+
+const char* OTAManager::getFirmwareUrl() {
+    return firmwareUrl.c_str();
+}
+
+void OTAManager::setCurrentVersion(const String& version) {
+    currentVersion = version;
 }
 
 bool OTAManager::parseVersionInfo(const String& jsonPayload) {
@@ -97,6 +106,7 @@ bool OTAManager::parseVersionInfo(const String& jsonPayload) {
     
     if (doc.containsKey("firmware_url")) {
         firmwareUrl = doc["firmware_url"].as<String>();
+        Serial.println("Parsed firmware URL: " + firmwareUrl);
     }
     
     if (doc.containsKey("required")) {
@@ -110,57 +120,69 @@ bool OTAManager::parseVersionInfo(const String& jsonPayload) {
 }
 
 bool OTAManager::downloadFirmware(const char* url) {
-    HTTPClient http;
+    Serial.println("Starting firmware download...");
     
+    HTTPClient http;
     http.begin(url);
-    http.setTimeout(30000); // 30 second timeout for download
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    http.setTimeout(60000); // 60 second timeout
     
     int httpCode = http.GET();
     
-    if (httpCode != HTTP_CODE_OK) {
-        Serial.println("HTTP GET failed, code: " + String(httpCode));
+    if (httpCode == HTTP_CODE_OK) {
+        int totalSize = http.getSize();
+        
+        WiFiClient* stream = http.getStreamPtr();
+        
+        // Enhanced download loop with percentage display
+        uint8_t buffer[256]; // Very small buffer to prevent stack issues
+        int written = 0;
+        int lastProgress = 0;
+        
+        while (http.connected() && (written < totalSize || totalSize == -1)) {
+            if (stream->available()) {
+                int bytesRead = stream->readBytes(buffer, min(256, stream->available()));
+                
+                if (bytesRead > 0) {
+                    if (Update.write(buffer, bytesRead) != bytesRead) {
+                        Serial.println("Write failed: " + String(Update.errorString()));
+                        http.end();
+                        return false;
+                    }
+                    written += bytesRead;
+                    
+                    // Show percentage progress every 5KB or when progress changes
+                    if (totalSize > 0) {
+                        int progress = (written * 100) / totalSize;
+                        if (progress != lastProgress || written % 5000 == 0) {
+                            Serial.print("\rProgress: " + String(progress) + "% (" + String(written) + "/" + String(totalSize) + " bytes)");
+                            lastProgress = progress;
+                        }
+                    } else {
+                        // For unknown size, show bytes downloaded
+                        if (written % 50000 == 0) {
+                            Serial.print("\rDownloaded: " + String(written) + " bytes");
+                        }
+                    }
+                }
+            }
+            delay(5); // Small delay
+        }
+        
+        // Show final completion
+        if (totalSize > 0) {
+            Serial.println("\rProgress: 100% (" + String(written) + "/" + String(totalSize) + " bytes) - Complete!");
+        } else {
+            Serial.println("\nDownload completed: " + String(written) + " bytes");
+        }
+        http.end();
+        
+        return true;
+    } else {
+        Serial.println("HTTP error: " + String(httpCode));
         http.end();
         return false;
     }
-    
-    int totalSize = http.getSize();
-    int remaining = totalSize;
-    int written = 0;
-    
-    Serial.println("Firmware size: " + String(totalSize) + " bytes");
-    
-    WiFiClient* stream = http.getStreamPtr();
-    
-    while (remaining > 0) {
-        int available = stream->available();
-        
-        if (available) {
-            uint8_t buffer[1024];
-            int readSize = min((size_t)available, sizeof(buffer));
-            
-            int bytesRead = stream->readBytes(buffer, readSize);
-            
-            if (Update.write(buffer, bytesRead) != bytesRead) {
-                Serial.println("Write failed during update");
-                http.end();
-                return false;
-            }
-            
-            remaining -= bytesRead;
-            written += bytesRead;
-            
-            // Show progress
-            int progress = (written * 100) / totalSize;
-            Serial.print("\rProgress: " + String(progress) + "%");
-        }
-        
-        delay(1);
-    }
-    
-    Serial.println("\nDownload completed");
-    http.end();
-    
-    return true;
 }
 
 bool OTAManager::writeFirmware(uint8_t* data, size_t length) {

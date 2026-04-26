@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "firmware_url": "https://esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com/firmware/esp32_ota_v1.0.1.bin",
   "release_notes": "WiFi connection fix and LED optimization",
   "required": false,

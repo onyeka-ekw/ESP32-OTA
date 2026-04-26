@@ -3,6 +3,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Update.h>
+#include <EEPROM.h>
 #include "ota_manager.h"
 
 // Fallback configuration for GitHub Actions (always defined)
@@ -31,6 +32,10 @@ const unsigned long WIFI_CONNECT_TIMEOUT = 10000;
 const unsigned long UPDATE_CHECK_INTERVAL = 3600000; // 1 hour in milliseconds
 const unsigned long LED_BLINK_INTERVAL = 2000;
 
+// EEPROM constants
+#define EEPROM_SIZE 64
+#define VERSION_ADDR 0
+
 // Global variables
 unsigned long lastUpdateCheck = 0;
 unsigned long lastLedBlink = 0;
@@ -43,8 +48,43 @@ void setup() {
     Serial.begin(115200);
     delay(1000);
     
+    // Initialize EEPROM
+    EEPROM.begin(EEPROM_SIZE);
+    
+    // Get stored version from EEPROM
+    String storedVersion = "";
+    bool isValidVersion = true;
+    
+    for (int i = 0; i < 16; i++) {
+        char c = EEPROM.read(VERSION_ADDR + i);
+        if (c == 0) break; // End of string
+        if (c < 32 || c > 126) { // Check for non-printable characters
+            isValidVersion = false;
+            break;
+        }
+        storedVersion += c;
+    }
+    
+    // If no valid version stored, use compiled version
+    if (storedVersion.length() == 0 || !isValidVersion) {
+        storedVersion = String(FIRMWARE_VERSION);
+        Serial.println("EEPROM not initialized, using compiled version: " + storedVersion);
+        
+        // Clear and save initial version to EEPROM
+        for (int i = 0; i < 16; i++) {
+            EEPROM.write(VERSION_ADDR + i, 0);
+        }
+        for (int i = 0; i < storedVersion.length(); i++) {
+            EEPROM.write(VERSION_ADDR + i, storedVersion.charAt(i));
+        }
+        EEPROM.write(VERSION_ADDR + storedVersion.length(), 0); // Null terminator
+        EEPROM.commit();
+        Serial.println("Initialized EEPROM with version: " + storedVersion);
+    }
+    
     Serial.println("ESP32 OTA Firmware Starting...");
-    Serial.println("Firmware Version: " + String(FIRMWARE_VERSION));
+    Serial.println("Compiled Version: " + String(FIRMWARE_VERSION));
+    Serial.println("Stored Version: " + storedVersion);
     
     // Initialize LED
     pinMode(LED_PIN, OUTPUT);
@@ -56,6 +96,9 @@ void setup() {
     
     // Connect to WiFi
     connectToWiFi();
+    
+    // Set current version for OTA comparison
+    otaManager.setCurrentVersion(storedVersion);
     
     // Check for updates on startup
     checkForUpdates();
@@ -86,7 +129,7 @@ void loop() {
         ledState = !ledState;
         digitalWrite(LED_PIN, ledState ? HIGH : LOW);
         lastLedBlink = currentTime;
-        Serial.println("LED State Upgrade: " + String(ledState ? "ON" : "OFF"));
+        Serial.println("LED State Version 2: " + String(ledState ? "ON" : "OFF"));
     }
     
     delay(1);
@@ -137,8 +180,34 @@ void checkForUpdates() {
     
     if (otaManager.checkForUpdate(VERSION_CHECK_ENDPOINT)) {
         Serial.println("Update available! Starting OTA update...");
-        if (otaManager.performUpdate(OTA_SERVER)) {
+        if (otaManager.performUpdate(otaManager.getFirmwareUrl())) {
+            // Save new version to EEPROM before restart
+            String newVersion = otaManager.getAvailableVersion();
+            
             Serial.println("OTA update completed successfully!");
+            Serial.println("Saving new version to EEPROM: " + newVersion);
+            
+            // Clear old version and write new version
+            for (int i = 0; i < 16; i++) {
+                EEPROM.write(VERSION_ADDR + i, 0);
+            }
+            for (int i = 0; i < newVersion.length(); i++) {
+                EEPROM.write(VERSION_ADDR + i, newVersion.charAt(i));
+            }
+            EEPROM.write(VERSION_ADDR + newVersion.length(), 0); // Null terminator
+            
+            bool commitSuccess = EEPROM.commit();
+            Serial.println("EEPROM commit " + String(commitSuccess ? "successful" : "failed"));
+            
+            // Verify the version was saved
+            String verifyVersion = "";
+            for (int i = 0; i < 16; i++) {
+                char c = EEPROM.read(VERSION_ADDR + i);
+                if (c == 0) break;
+                verifyVersion += c;
+            }
+            Serial.println("Verified EEPROM version: " + verifyVersion);
+            
             Serial.println("Restarting device...");
             delay(1000);
             ESP.restart();

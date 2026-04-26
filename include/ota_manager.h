@@ -14,13 +14,17 @@ public:
     bool checkForUpdate(const char* versionUrl);
     
     // Perform the OTA update
-    bool performUpdate(const char* server);
+    bool performUpdate(const char* firmwareUrl);
+    const char* getFirmwareUrl();
     
     // Get current firmware version
     String getCurrentVersion();
     
     // Get available firmware version
     String getAvailableVersion();
+    
+    // Set current version (for persistent storage)
+    void setCurrentVersion(const String& version);
 
 private:
     String currentVersion;
