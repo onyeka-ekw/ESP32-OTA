@@ -1,0 +1,12 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// WiFi credentials - UPDATE THESE WITH YOUR VALUES
+#define WIFI_SSID "YOUR_WIFI_SSID"
+#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+
+// OTA server configuration - UPDATE THESE WITH YOUR VALUES
+#define OTA_SERVER "esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com"
+#define VERSION_CHECK_ENDPOINT "https://esp32-ota-349412601154-us-east-1-an.s3.amazonaws.com/version.json"
+
+#endif // CONFIG_H
