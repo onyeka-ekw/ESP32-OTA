@@ -84,16 +84,29 @@ jobs:
         python3 << 'EOF'
         import json
         import datetime
+        import os
+        
+        # Get environment variables and clean them
+        version = os.environ.get('VERSION', '').replace('\\', '').replace('"', '')
+        bucket = os.environ.get('AWS_S3_BUCKET', '').replace('\\', '')
+        filename = os.environ.get('FILENAME', '').replace('\\', '')
+        sha = os.environ.get('GITHUB_SHA', '').replace('\\', '')
+        
         data = {
-            "version": "${{ steps.version.outputs.version }}",
-            "firmware_url": "https://${{ secrets.AWS_S3_BUCKET }}.s3.amazonaws.com/firmware/${{ steps.filename.outputs.filename }}",
-            "release_notes": "Automated release from commit ${{ github.sha }}",
+            "version": version,
+            "firmware_url": f"https://{bucket}.s3.amazonaws.com/firmware/{filename}",
+            "release_notes": f"Automated release from commit {sha}",
             "required": False,
             "released_at": datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
         }
         with open('version.json', 'w') as f:
             json.dump(data, f, indent=2)
         EOF
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        FILENAME: ${{ steps.filename.outputs.filename }}
+        GITHUB_SHA: ${{ github.sha }}
         
     - name: Upload version.json to S3
       if: github.event_name == 'push'
