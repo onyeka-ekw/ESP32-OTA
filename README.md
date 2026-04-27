@@ -4,12 +4,15 @@ This project implements a complete Over-The-Air (OTA) update system for ESP32 de
 
 ## Features
 
-- **Automatic OTA Updates**: Checks for updates every hour and on startup
-- **GitHub CI/CD Pipeline**: Automated builds and deployments
-- **Version Management**: Semantic versioning with update checking
-- **LED Status Indicator**: Visual feedback for system status
-- **WiFi Connectivity**: Automatic reconnection if connection is lost
-- **Error Handling**: Robust error handling and recovery
+- **Secure OTA Updates**: Encrypted firmware downloads from S3
+- **User-Configurable WiFi**: No hardcoded credentials, setup via Serial Monitor
+- **Persistent Settings**: WiFi credentials stored in EEPROM, survive OTA updates
+- **Version Management**: Automatic version checking and comparison
+- **First-Time Setup**: User-friendly configuration mode
+- **Factory Reset**: Clear credentials and reconfigure anytime
+- **Rollback Protection**: Only installs valid firmware
+- **Error Handling**: Comprehensive error recovery
+- **Debug Support**: Detailed serial output for troubleshooting
 
 ## Project Structure
 
@@ -55,20 +58,31 @@ ESP32_OTA/
 - ESP32 development board
 
 ### 2. Configuration
-Update the following in `src/main.cpp`:
-```cpp
-const char* WIFI_SSID = "YOUR_WIFI_SSID";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
-const char* OTA_SERVER = "your-s3-bucket.s3.amazonaws.com";
-const char* VERSION_CHECK_ENDPOINT = "https://your-s3-bucket.s3.amazonaws.com/version.json";
+Update the following in `platformio.ini`:
+```ini
+build_flags = 
+    -DCORE_DEBUG_LEVEL=3
+    -DFIRMWARE_VERSION=\"1.0.5\"
 ```
+
+Create `.env` file locally:
+```bash
+OTA_SERVER=your-s3-bucket.s3.amazonaws.com
+VERSION_CHECK_ENDPOINT=https://your-s3-bucket.s3.amazonaws.com/version.json
+```
+
+**Note**: WiFi credentials are configured by user at first boot via Serial Monitor - no hardcoded credentials needed!
 
 ### 3. GitHub Secrets
 Set up these secrets in your GitHub repository:
-- `AWS_ACCESS_KEY_ID`: AWS access key
-- `AWS_SECRET_ACCESS_KEY`: AWS secret key
-- `AWS_S3_BUCKET`: S3 bucket name
-- `AWS_REGION`: AWS region
+- `OTA_SERVER`: S3 bucket URL (e.g., `esp32-ota-bucket.s3.amazonaws.com`)
+- `VERSION_CHECK_ENDPOINT`: Version check URL (e.g., `https://esp32-ota-bucket.s3.amazonaws.com/version.json`)
+- `AWS_ACCESS_KEY_ID`: AWS access key (for S3 upload)
+- `AWS_SECRET_ACCESS_KEY`: AWS secret key (for S3 upload)
+- `AWS_S3_BUCKET`: S3 bucket name (for S3 upload)
+- `AWS_REGION`: AWS region (for S3 upload)
+
+**Note**: Only `OTA_SERVER` and `VERSION_CHECK_ENDPOINT` are required for the ESP32 firmware. AWS credentials are only needed for GitHub Actions deployment.
 
 ### 4. S3 Bucket Setup
 1. Create an S3 bucket for firmware storage
@@ -76,7 +90,24 @@ Set up these secrets in your GitHub repository:
 3. Set up bucket policy for firmware access
 4. Create version.json with latest version info
 
-### 5. Building and Flashing
+### 5. First-Time User Setup
+After flashing, open Serial Monitor (115200 baud) and configure WiFi:
+
+```
+=== ESP32 OTA Setup Mode ===
+Please configure your WiFi credentials
+Format: SSID,PASSWORD (e.g., MyWiFi,MyPassword)
+Type 'reset' to clear credentials and restart setup
+Waiting for input...
+
+MyHomeWiFi,MySecretPassword123
+Setting credentials:
+SSID: MyHomeWiFi
+Password: 15 characters
+Setup complete! Credentials saved.
+```
+
+### 6. Building and Flashing
 ```bash
 # Build the firmware
 pio run
@@ -105,19 +136,34 @@ build_flags =
 4. **Installation**: Firmware is installed and device restarts
 5. **Verification**: New version is confirmed running
 
-## LED Status Codes
+## LED Indicators
 
 - **Solid ON**: WiFi connected and device running normally
-- **Blinking**: Device is checking for updates
-- **3 Blinks**: WiFi connection failed
-- **5 Blinks**: OTA update failed
+- **Blinking**: Device is running (continuous blink in loop)
+- **3 Blinks**: WiFi connection failed (rapid blink on connection failure)
+- **5 Blinks**: OTA update failed (rapid blink on update failure)
+
+## EEPROM Memory Layout
+
+The ESP32 uses 128 bytes of EEPROM to store persistent settings:
+
+```
+Address 0-15:    Firmware version (16 bytes)
+Address 16-47:   User WiFi SSID (32 bytes)
+Address 48-111:  User WiFi Password (64 bytes)
+Address 112:      Configuration flags (1 byte)
+                  0xAA = Configured, 0x00 = Not configured
+Address 113-127:  Reserved (15 bytes)
+```
 
 ## Troubleshooting
 
 ### Common Issues
-1. **WiFi Connection Fails**: Check SSID and password
-2. **Update Fails**: Verify S3 bucket permissions and URL
-3. **Build Fails**: Check PlatformIO configuration and dependencies
+1. **First Boot Setup**: Device enters setup mode - configure WiFi via Serial Monitor
+2. **WiFi Connection Fails**: Check SSID and password format (SSID,PASSWORD)
+3. **Update Fails**: Verify S3 bucket permissions and URL
+4. **Build Fails**: Check PlatformIO configuration and dependencies
+5. **Credentials Reset**: Type 'reset' in setup mode to clear saved credentials
 
 ### Debug Output
 Enable serial monitor at 115200 baud to see detailed debug information:

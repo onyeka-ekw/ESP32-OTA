@@ -6,25 +6,13 @@
 #include <EEPROM.h>
 #include "ota_manager.h"
 
-// Configuration - environment variables required (no hardcoded credentials)
-// These must be provided by .env file locally or GitHub Secrets in CI/CD
 
-// Function declarations
-void connectToWiFi();
-void checkForUpdates();
-void setupUserCredentials();
-void enterSetupMode();
-bool isUserConfigured();
-void loadUserCredentials(String &ssid, String &password);
-void saveUserCredentials(const String &ssid, const String &password);
 
-// LED configuration
 const int LED_PIN = 2; // Built-in LED on ESP32
 
 // Timing constants
 const unsigned long WIFI_CONNECT_TIMEOUT = 10000;
 const unsigned long UPDATE_CHECK_INTERVAL = 3600000; // 1 hour in milliseconds
-const unsigned long LED_BLINK_INTERVAL = 2000;
 
 // EEPROM constants for persistent user settings
 #define EEPROM_SIZE 128
@@ -48,6 +36,14 @@ String userPassword = "";
 // Objects
 OTAManager otaManager;
 
+// Function declarations
+void connectToWiFi();
+void checkForUpdates();
+void setupUserCredentials();
+void enterSetupMode();
+bool isUserConfigured();
+void loadUserCredentials(String &ssid, String &password);
+void saveUserCredentials(const String &ssid, const String &password);
 void setup() {
     Serial.begin(115200);
     delay(1000);
@@ -55,7 +51,7 @@ void setup() {
     // Initialize EEPROM
     EEPROM.begin(EEPROM_SIZE);
     
-    // Get stored version from EEPROM
+    // Get stored firmware version from EEPROM
     String storedVersion = "";
     bool isValidVersion = true;
     
@@ -134,21 +130,17 @@ void loop() {
         lastUpdateCheck = currentTime;
     }
     
-    // Blink LED to indicate device is running
-    if (currentTime - lastLedBlink >= LED_BLINK_INTERVAL) {
-        ledState = !ledState;
-        digitalWrite(LED_PIN, ledState ? HIGH : LOW);
-        lastLedBlink = currentTime;
-        Serial.println("LED State Version 5: " + String(ledState ? "ON" : "OFF"));
-    }
+    ledState = !ledState;
+    digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+    lastLedBlink = currentTime;
+    Serial.println("LED State Version 5: " + String(ledState ? "ON" : "OFF"));
     
-    delay(1);
+    delay(500);
 }
 
 void connectToWiFi() {
     Serial.println("Connecting to WiFi...");
     Serial.println("Target SSID: " + userSSID);
-    Serial.println("Password length: " + String(userPassword.length()));
     
     WiFi.begin(userSSID.c_str(), userPassword.c_str());
     
@@ -170,24 +162,19 @@ void connectToWiFi() {
     } else {
         Serial.println("\nFailed to connect to WiFi");
         Serial.println("Final status: " + String(WiFi.status()));
-        Serial.println("Possible causes:");
-        Serial.println("- Wrong password");
-        Serial.println("- Network security type not supported");
-        Serial.println("- MAC address filtering");
-        
         // Blink 3 times to indicate connection failure
         for (int i = 0; i < 3; i++) {
             digitalWrite(LED_PIN, HIGH);
-            delay(200);
+            delay(100);
             digitalWrite(LED_PIN, LOW);
-            delay(200);
+            delay(100);
         }
     }
 }
 
 void checkForUpdates() {
     Serial.println("Checking for firmware updates...");
-    
+
     if (otaManager.checkForUpdate(VERSION_CHECK_ENDPOINT)) {
         Serial.println("Update available! Starting OTA update...");
         if (otaManager.performUpdate(otaManager.getFirmwareUrl())) {
